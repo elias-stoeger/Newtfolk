@@ -30,20 +30,37 @@ class Map:
         self.background = [[], [], []]
         self.backcheck = []
         self.out = None
+        self.bX = -560  # -560
+        self.bY = -990  # -990
 
 
 GMap = Map()
 
-bX = -560  # -960
-bY = -990  # -340
-
 
 def back(x, y):
+    if GMap.bX <= -1060:
+        world.right()
+        GMap.bX += 1000
+        GMap.backcheck = False
+        print("went right")
+    if GMap.bX >= -40:
+        world.left()
+        GMap.bX -= 1000
+        GMap.backcheck = False
+    if GMap.bY <= -1845:
+        world.down()
+        GMap.bY += 1000
+        GMap.backcheck = False
+    if GMap.bY >= -155:
+        world.up()
+        GMap.bY -= 1000
+        GMap.backcheck = False
     if GMap.background == [[], [], []] or GMap.background != GMap.backcheck:
         counter = 0
+        GMap.background = [[], [], []]
         for i in world.active:
             for sq in i:
-                GMap.background[counter].append(Image.open(f"Pictures/{sq.type}.png"))   # pygame.image.load(f"Pictures/{sq.type}.png"))
+                GMap.background[counter].append(Image.open(f"Pictures/{sq.type}.png"))
                 GMap.backcheck = GMap.background
             counter += 1
         picture = Image.new('RGB', (3000, 3000))
@@ -56,7 +73,6 @@ def back(x, y):
             counter += 1
         picture.save("temp/back.png")
         GMap.out = pygame.image.load("temp/back.png")
-        # implement backcheck
 
     screen.blit(GMap.out, (x, y))
 
@@ -109,7 +125,7 @@ Player = "The Player Class I'm going to make"
 selected = Player
 
 
-# Game Loop, keeps looping as long as the window isn't closed
+# Game Loop
 frameManager = 0
 running = True
 while running:
@@ -122,15 +138,15 @@ while running:
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_a:
-                PlayerX_c = 0.6
+                PlayerX_c = 1
                 right = False
             if event.key == pygame.K_d:
-                PlayerX_c = -0.6
+                PlayerX_c = -1
                 right = True
             if event.key == pygame.K_w:
-                PlayerY_c = 0.6
+                PlayerY_c = 1
             if event.key == pygame.K_s:
-                PlayerY_c = -0.6
+                PlayerY_c = -1
             if event.key == pygame.K_LSHIFT:
                 PlayerX_c = PlayerX_c * 2
                 PlayerY_c = PlayerY_c * 2
@@ -140,9 +156,9 @@ while running:
             if event.key == pygame.K_s or event.key == pygame.K_w:
                 PlayerY_c = 0
             if event.key == pygame.K_LSHIFT:
-                if PlayerY_c == 1.2 or PlayerY_c == -1.2:
+                if PlayerY_c == 2 or PlayerY_c == -2:
                     PlayerY_c = PlayerY_c / 2
-                if PlayerX_c == 1.2 or PlayerX_c == -1.2:
+                if PlayerX_c == 2 or PlayerX_c == -2:
                     PlayerX_c = PlayerX_c / 2
         if PlayerX_c == 0 and PlayerY_c == 0:
             moving = False
@@ -150,7 +166,7 @@ while running:
             if not moving:
                 moving = True
                 index = 0
-    back(bX, bY)
+    back(GMap.bX, GMap.bY)
     if right and not moving:
         s.draw(screen, index % s.totalCellCount, HW, HH, CENTER_HANDLE)
     elif not right and not moving:
@@ -165,8 +181,8 @@ while running:
         frameManager = 0
         # print(PlayerY_c, ":", PlayerX_c)
 
-    bX += PlayerX_c
-    bY += PlayerY_c
+    GMap.bX += PlayerX_c
+    GMap.bY += PlayerY_c
 
     # player(PlayerX, PlayerY)
     pygame.display.update()
