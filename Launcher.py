@@ -2,7 +2,22 @@ import pygame
 from Player import *
 from Enemy import *
 from World import *
+from NPC import *
 from PIL import Image
+import threading
+
+
+# A thread for some image processing
+class Thread(threading.Thread):
+    def __init__(self, n, x, y):
+        threading.Thread.__init__(self)
+        self.n = n
+        self.x = x
+        self.y = y
+
+    def run(self):
+        minor_back(self.n, self.x, self.y)
+
 
 # initialize game
 pygame.init()
@@ -21,10 +36,12 @@ icon = pygame.image.load("Pictures/Icon.png")
 pygame.display.set_icon(icon)
 
 
+# create and initialize world
 world = World()
 world.build_world()
 
 
+# used in the making of the background
 class Map:
     def __init__(self):
         self.background = [[], [], []]
@@ -32,64 +49,116 @@ class Map:
         self.out = None
         self.bX = -560  # -560
         self.bY = -990  # -990
+        self.monster_chance = 1
+        self.backup = None
+        self.make_backup()
+        self.busy = False
+
+    def make_backup(self):
+        self.backup = pygame.image.load("temp/back.png")
 
 
+# I'll let you figure that one out yourself
 GMap = Map()
 
 
+# some prepared squares to have a little less lag when loading the world further
+grass = Image.open(f"Pictures/grass.png")
+rocky = Image.open(f"Pictures/rocky.png")
+red = Image.open(f"Pictures/red.png")
+terrains = {"grass": grass, "rocky": rocky, "red": red}
+
+
+# Create the background each frame, not very optimized yet
 def back(x, y):
+    directX = 0
+    directY = 0
+    n = 0
     if GMap.bX <= -1060:
-        world.right()
-        GMap.bX += 1000
+        n += world.right()
+        directX = 1000
         GMap.backcheck = False
-        print("went right")
     if GMap.bX >= -40:
-        world.left()
-        GMap.bX -= 1000
+        n += world.left()
+        directX = -1000
         GMap.backcheck = False
     if GMap.bY <= -1845:
-        world.down()
-        GMap.bY += 1000
+        n += world.down()
+        directY = 1000
         GMap.backcheck = False
     if GMap.bY >= -155:
-        world.up()
-        GMap.bY -= 1000
+        n += world.up()
+        directY = -1000
         GMap.backcheck = False
-    if GMap.background == [[], [], []] or GMap.background != GMap.backcheck:
-        counter = 0
-        GMap.background = [[], [], []]
-        for i in world.active:
-            for sq in i:
-                GMap.background[counter].append(Image.open(f"Pictures/{sq.type}.png"))
-                GMap.backcheck = GMap.background
-            counter += 1
-        picture = Image.new('RGB', (3000, 3000))
-        counter = 0
-        for row in GMap.background:
-            counter2 = 0
-            for pic in row:
-                picture.paste(pic, (counter * 1000, counter2 * 1000))
-                counter2 += 1
-            counter += 1
-        picture.save("temp/back.png")
-        GMap.out = pygame.image.load("temp/back.png")
+    if GMap.background == [[], [], []] or GMap.background != GMap.backcheck and not GMap.busy:
+        background = Thread(n, directX, directY)
+        background.start()
+    if GMap.out:
+        screen.blit(GMap.out, (x, y))
+    else:
+        screen.blit(GMap.backup, (x, y))
 
-    screen.blit(GMap.out, (x, y))
+
+def minor_back(n, x, y):
+    GMap.busy = True
+    counter = 0
+    GMap.background = [[], [], []]
+    for i in world.active:
+        for sq in i:
+            GMap.background[counter].append(terrains[sq.type])
+            GMap.backcheck = GMap.background
+        counter += 1
+    picture = Image.new('RGB', (3000, 3000))
+    counter = 0
+    for row in GMap.background:
+        counter2 = 0
+        for pic in row:
+            picture.paste(pic, (counter * 1000, counter2 * 1000))
+            counter2 += 1
+        counter += 1
+    picture.save("temp/back.png")
+    GMap.out = pygame.image.load("temp/back.png")
+    GMap.make_backup()
+    GMap.busy = False
+    GMap.monster_chance += n
+    spawn = npcs.spawn(GMap.monster_chance, PlayerX + randint(-350, 350), PlayerY + randint(-350, 350), choice(kinds))
+    if spawn:
+        GMap.monster_chance = 0
+    GMap.bX += x
+    GMap.bY += y
 
 
 # Player
-# PlayerImg = pygame.image.load("Pictures/Player_b.png")
 PlayerX = 370
 PlayerY = 250
 PlayerX_c = 0
 PlayerY_c = 0
+Player_h = 136  # actually 116 but it's for putting enemies behind the player and that number works ¯\_(ツ)_/¯
 
 
-# def player(x, y):
-#     screen.blit(PlayerImg, (x, y))
+# NPCs
+class NPCs:
+    def __init__(self):
+        self.NPCs = []
+
+    def spawn(self, chance, x, y, kind):
+        roll = randint(0, 10)
+        if chance >= roll:
+            new = NPC(x, y, kind)
+            self.NPCs.append(new)
+            if new.kind == "Newt":
+                new.walking = [pink_walking, pink_walking_left]
+                new.idle = [pink_idle, pink_idle_left]
+            elif new.kind == "Fish":
+                new.walking = [fish_walking, fish_walking]
+                new.idle = [fish_idle, fish_idle_left]
+            return True
 
 
-# 370x116, 5 sprites
+npcs = NPCs()
+
+
+# Sprite class
 class sprite:
     def __init__(self, filename, cols, rows):
         self.sheet = pygame.image.load(filename).convert_alpha()
@@ -111,31 +180,40 @@ class sprite:
         surface.blit(self.sheet, (x + self.handle[handle][0], y + self.handle[handle][1]), self.cells[cellindex])
 
 
-s = sprite("Pictures/Idle_smooth_b.png", 5, 1)
-s_l = sprite("Pictures/Idle_smooth_left_b.png", 5, 1)
-walking = sprite("Pictures/walking_smooth.png", 9, 1)
-walking_l = sprite("Pictures/walking_left_smooth.png", 9, 1)
+# Sprites for Newt (The Player)
+s = sprite("Pictures/Idle_ws.png", 5, 1)
+s_l = sprite("Pictures/Idle_ws_left.png", 5, 1)
+walking = sprite("Pictures/walking_ws.png", 9, 1)
+walking_l = sprite("Pictures/walking_left_ws.png", 9, 1)
 moving = False
 right = True
 
-CENTER_HANDLE = 4
-index = 0
+# Sprites for NPCs and Enemies
+fish_idle = sprite("Pictures/Fish_smooth_idle.png", 5, 1)
+fish_idle_left = sprite("Pictures/Fish_smooth_idle_left.png", 5, 1)
+fish_walking = sprite("Pictures/Fish_smooth_idle.png", 5, 1)
 
+# Pink Newt Sprites
+pink_idle = sprite("Pictures/Idle_pink.png", 5, 1)
+pink_idle_left = sprite("Pictures/Idle_pink_left.png", 5, 1)
+pink_walking = sprite("Pictures/walking_pink.png", 9, 1)
+pink_walking_left = sprite("Pictures/walking_left_pink.png", 9, 1)
+
+# May be used later
 Player = "The Player Class I'm going to make"
 selected = Player
 
-
 # Game Loop
+CENTER_HANDLE = 4
+index = 0
 frameManager = 0
 running = True
 while running:
 
-    screen.fill((0, 0, 0))
-
+    # Move the background around depending on what buttons you press
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_a:
                 PlayerX_c = 1
@@ -166,7 +244,30 @@ while running:
             if not moving:
                 moving = True
                 index = 0
+
+    # draw the background
     back(GMap.bX, GMap.bY)
+
+    # draw NPCs in front of the player
+    def monster_draw():
+        if not creature.moving and creature.proxi and creature.right:
+            creature.idle[0].draw(screen, index % creature.idle[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
+        elif creature.moving and creature.proxi and creature.right:
+            creature.walking[0].draw(screen, index % creature.walking[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
+        elif not creature.moving and creature.proxi and not creature.right:
+            creature.idle[1].draw(screen, index % creature.idle[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
+        elif creature.moving and creature.proxi and not creature.right:
+            creature.walking[1].draw(screen, index % creature.walking[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
+
+    for creature in npcs.NPCs:
+        if creature.thinker // 200 == 1:
+            creature.think()
+            creature.thinker = 0
+        if creature.Y + Player_h < GMap.bY * -1:
+            monster_draw()
+        creature.thinker += 1
+
+    # draw Player
     if right and not moving:
         s.draw(screen, index % s.totalCellCount, HW, HH, CENTER_HANDLE)
     elif not right and not moving:
@@ -179,11 +280,23 @@ while running:
     if frameManager // 10 != 0:
         index += 1
         frameManager = 0
-        # print(PlayerY_c, ":", PlayerX_c)
 
+    # draw NPCs behind the Player
+    for creature in npcs.NPCs:
+        if creature.Y + Player_h >= GMap.bY * -1:
+            monster_draw()
+
+    # Apply movement done that frame
     GMap.bX += PlayerX_c
     GMap.bY += PlayerY_c
+    for creature in npcs.NPCs:
+        creature.X += PlayerX_c + creature.mov_X
+        creature.Y += PlayerY_c + creature.mov_Y
+        if creature.X <= 0 or creature.X >= 1920 or creature.Y <= -50 or creature.Y >= 1080:
+            creature.proxi = False
+        else:
+            creature.proxi = True
 
-    # player(PlayerX, PlayerY)
+    # update display and set frame rate
     pygame.display.update()
     FPS.tick(60)
