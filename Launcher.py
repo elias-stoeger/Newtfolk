@@ -42,7 +42,6 @@ def back(x, y):
         world.right()
         GMap.bX += 1000
         GMap.backcheck = False
-        print("went right")
     if GMap.bX >= -40:
         world.left()
         GMap.bX -= 1000
@@ -111,10 +110,10 @@ class sprite:
         surface.blit(self.sheet, (x + self.handle[handle][0], y + self.handle[handle][1]), self.cells[cellindex])
 
 
-s = sprite("Pictures/Idle_smooth_b.png", 5, 1)
-s_l = sprite("Pictures/Idle_smooth_left_b.png", 5, 1)
-walking = sprite("Pictures/walking_smooth.png", 9, 1)
-walking_l = sprite("Pictures/walking_left_smooth.png", 9, 1)
+s = sprite("Pictures/Idle_ws.png", 5, 1)
+s_l = sprite("Pictures/Idle_ws_left.png", 5, 1)
+walking = sprite("Pictures/walking_ws.png", 9, 1)
+walking_l = sprite("Pictures/walking_left_ws.png", 9, 1)
 moving = False
 right = True
 
