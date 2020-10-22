@@ -53,6 +53,7 @@ class Map:
         self.backup = None
         self.make_backup()
         self.busy = False
+        self.generated = False
 
     def make_backup(self):
         self.backup = pygame.image.load("temp/back.png")
@@ -69,28 +70,29 @@ red = Image.open(f"Pictures/red.png")
 terrains = {"grass": grass, "rocky": rocky, "red": red}
 
 
-# Create the background each frame, not very optimized yet
+# Create the background each frame
 def back(x, y):
     directX = 0
     directY = 0
     n = 0
-    if GMap.bX <= -1060:
+    if GMap.bX <= -1060 and not GMap.busy:
         n += world.right()
         directX = 1000
         GMap.backcheck = False
-    if GMap.bX >= -40:
+    if GMap.bX >= -40 and not GMap.busy:
         n += world.left()
         directX = -1000
         GMap.backcheck = False
-    if GMap.bY <= -1845:
+    if GMap.bY <= -1845 and not GMap.busy:
         n += world.down()
         directY = 1000
         GMap.backcheck = False
-    if GMap.bY >= -155:
+    if GMap.bY >= -155 and not GMap.busy:
         n += world.up()
         directY = -1000
         GMap.backcheck = False
-    if GMap.background == [[], [], []] or GMap.background != GMap.backcheck and not GMap.busy:
+    if GMap.background != GMap.backcheck and not GMap.busy:     # GMap.background == [[], [], []] or
+        GMap.busy = True
         background = Thread(n, directX, directY)
         background.start()
     if GMap.out:
@@ -99,15 +101,15 @@ def back(x, y):
         screen.blit(GMap.backup, (x, y))
 
 
+# that part is threaded, it creates and loads the new 3x3 picture
 def minor_back(n, x, y):
-    GMap.busy = True
     counter = 0
     GMap.background = [[], [], []]
     for i in world.active:
         for sq in i:
             GMap.background[counter].append(terrains[sq.type])
-            GMap.backcheck = GMap.background
         counter += 1
+    GMap.backcheck = GMap.background
     picture = Image.new('RGB', (3000, 3000))
     counter = 0
     for row in GMap.background:
@@ -118,14 +120,16 @@ def minor_back(n, x, y):
         counter += 1
     picture.save("temp/back.png")
     GMap.out = pygame.image.load("temp/back.png")
+    GMap.bX += x
+    GMap.bY += y
     GMap.make_backup()
-    GMap.busy = False
     GMap.monster_chance += n
     spawn = npcs.spawn(GMap.monster_chance, PlayerX + randint(-350, 350), PlayerY + randint(-350, 350), choice(kinds))
     if spawn:
         GMap.monster_chance = 0
-    GMap.bX += x
-    GMap.bY += y
+    GMap.busy = False
+    if not GMap.generated:
+        GMap.generated = True
 
 
 # Player
@@ -173,7 +177,7 @@ class sprite:
         self.handle = list([
             (0, 0), (-hw, 0), (-w, 0),
             (0, -hh), (-hw, -hh), (-w, -hh),
-            (0, -h), (-hw, -h), (-w, -h),
+            (0, -h), (-hw, -h), (-w, -h)
         ])
 
     def draw(self, surface, cellindex, x, y, handle=0):
@@ -296,6 +300,10 @@ while running:
             creature.proxi = False
         else:
             creature.proxi = True
+
+    if not GMap.generated:
+        screen.fill((0, 0, 0))
+        screen.blit(pygame.image.load("Pictures/generating.png"), (820, 550))
 
     # update display and set frame rate
     pygame.display.update()
