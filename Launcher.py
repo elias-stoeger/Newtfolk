@@ -124,7 +124,7 @@ def minor_back(n, x, y):
     GMap.bY += y
     GMap.make_backup()
     GMap.monster_chance += n
-    spawn = npcs.spawn(GMap.monster_chance, PlayerX + randint(-350, 350), PlayerY + randint(-350, 350), choice(kinds))
+    spawn = npcs.spawn(GMap.monster_chance, GMap.bX + randint(-350, 350) + 960, GMap.bY + randint(-350, 350) + 540, choice(kinds))
     if spawn:
         GMap.monster_chance = 0
     GMap.busy = False
@@ -154,7 +154,7 @@ class NPCs:
                 new.walking = [pink_walking, pink_walking_left]
                 new.idle = [pink_idle, pink_idle_left]
             elif new.kind == "Fish":
-                new.walking = [fish_walking, fish_walking]
+                new.walking = [fish_walking, fish_walking_left]
                 new.idle = [fish_idle, fish_idle_left]
             return True
 
@@ -195,7 +195,8 @@ right = True
 # Sprites for NPCs and Enemies
 fish_idle = sprite("Pictures/Fish_smooth_idle.png", 5, 1)
 fish_idle_left = sprite("Pictures/Fish_smooth_idle_left.png", 5, 1)
-fish_walking = sprite("Pictures/Fish_smooth_idle.png", 5, 1)
+fish_walking = sprite("Pictures/fish_smooth_walking.png", 6, 1)
+fish_walking_left = sprite("Pictures/fish_smooth_walking_left.png", 6, 1)
 
 # Pink Newt Sprites
 pink_idle = sprite("Pictures/Idle_pink.png", 5, 1)
@@ -206,6 +207,12 @@ pink_walking_left = sprite("Pictures/walking_left_pink.png", 9, 1)
 # May be used later
 Player = "The Player Class I'm going to make"
 selected = Player
+
+# tester = NPC(800, 500, "Fish")
+# tester.walking = [fish_walking, fish_walking_left]
+# tester.idle = [fish_idle, fish_idle_left]
+# npcs.NPCs.append(tester)
+
 
 # Game Loop
 CENTER_HANDLE = 4
@@ -267,7 +274,9 @@ while running:
         if creature.thinker // 200 == 1:
             creature.think()
             creature.thinker = 0
-        if creature.Y + Player_h < GMap.bY * -1:
+        if creature.Y < 540 and creature.kind == "Newt":
+            monster_draw()
+        elif creature.Y < 555 and creature.kind == "Fish":
             monster_draw()
         creature.thinker += 1
 
@@ -287,7 +296,9 @@ while running:
 
     # draw NPCs behind the Player
     for creature in npcs.NPCs:
-        if creature.Y + Player_h >= GMap.bY * -1:
+        if creature.Y >= 540 and creature.kind == "Newt":
+            monster_draw()
+        elif creature.Y >= 555 and creature.kind == "Fish":
             monster_draw()
 
     # Apply movement done that frame

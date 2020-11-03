@@ -119,7 +119,13 @@ class Square:
         self.objects = []
 
 
+# terrains
 grass = "Pictures/grass.png"
 rocky = "Pictures/rocky.png"
+# woods
+
+
+# red is just a red square I used for testing
 red = "red"
+
 types = ["grass", "rocky"]
