@@ -25,7 +25,7 @@ pygame.init()
 # create screen
 W, H = 1920, 1080
 HW, HH = W / 2, H / 2
-screen = pygame.display.set_mode((W, H))
+screen = pygame.display.set_mode((W, H), pygame.FULLSCREEN)
 
 # FPS
 FPS = pygame.time.Clock()
@@ -54,6 +54,7 @@ class Map:
         self.make_backup()
         self.busy = False
         self.generated = False
+        self.menu = False   # True if the menu is open
 
     def make_backup(self):
         self.backup = pygame.image.load("temp/back.png")
@@ -137,7 +138,7 @@ PlayerX = 370
 PlayerY = 250
 PlayerX_c = 0
 PlayerY_c = 0
-Player_h = 136  # actually 116 but it's for putting enemies behind the player and that number works ¯\_(ツ)_/¯
+# Player_h = 116
 
 
 # NPCs
@@ -195,8 +196,8 @@ right = True
 # Sprites for NPCs and Enemies
 fish_idle = sprite("Pictures/Fish_smooth_idle.png", 5, 1)
 fish_idle_left = sprite("Pictures/Fish_smooth_idle_left.png", 5, 1)
-fish_walking = sprite("Pictures/fish_smooth_walking.png", 6, 1)
-fish_walking_left = sprite("Pictures/fish_smooth_walking_left.png", 6, 1)
+fish_walking = sprite("Pictures/fish_smooth_walking_b.png", 6, 1)
+fish_walking_left = sprite("Pictures/fish_smooth_walking_left_b.png", 6, 1)
 
 # Pink Newt Sprites
 pink_idle = sprite("Pictures/Idle_pink.png", 5, 1)
@@ -208,11 +209,14 @@ pink_walking_left = sprite("Pictures/walking_left_pink.png", 9, 1)
 Player = "The Player Class I'm going to make"
 selected = Player
 
+# if you uncomment this a fish with legs will stand next to the player when the game starts
 # tester = NPC(800, 500, "Fish")
 # tester.walking = [fish_walking, fish_walking_left]
 # tester.idle = [fish_idle, fish_idle_left]
 # npcs.NPCs.append(tester)
 
+# The menu
+menu = pygame.image.load("Pictures/border_smooth.png")
 
 # Game Loop
 CENTER_HANDLE = 4
@@ -220,102 +224,126 @@ index = 0
 frameManager = 0
 running = True
 while running:
+    try:
 
-    # Move the background around depending on what buttons you press
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_a:
-                PlayerX_c = 1
-                right = False
-            if event.key == pygame.K_d:
-                PlayerX_c = -1
-                right = True
-            if event.key == pygame.K_w:
-                PlayerY_c = 1
-            if event.key == pygame.K_s:
-                PlayerY_c = -1
-            if event.key == pygame.K_LSHIFT:
-                PlayerX_c = PlayerX_c * 2
-                PlayerY_c = PlayerY_c * 2
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_a or event.key == pygame.K_d:
-                PlayerX_c = 0
-            if event.key == pygame.K_s or event.key == pygame.K_w:
-                PlayerY_c = 0
-            if event.key == pygame.K_LSHIFT:
-                if PlayerY_c == 2 or PlayerY_c == -2:
-                    PlayerY_c = PlayerY_c / 2
-                if PlayerX_c == 2 or PlayerX_c == -2:
-                    PlayerX_c = PlayerX_c / 2
-        if PlayerX_c == 0 and PlayerY_c == 0:
-            moving = False
+        # Move the background around depending on what buttons you press
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if GMap.menu:
+                    mp = pygame.mouse.get_pos()
+                    # print(mp)
+                    if mp[0] in range(797, 961) and mp[1] in range(439, 477):
+                        pygame.quit()
+                    if mp[0] in range(797, 961) and mp[1] in range(624, 659):
+                        GMap.menu = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a:
+                    PlayerX_c = 1
+                    right = False
+                if event.key == pygame.K_d:
+                    PlayerX_c = -1
+                    right = True
+                if event.key == pygame.K_w:
+                    PlayerY_c = 1
+                if event.key == pygame.K_s:
+                    PlayerY_c = -1
+                if event.key == pygame.K_LSHIFT:
+                    PlayerX_c = PlayerX_c * 2
+                    PlayerY_c = PlayerY_c * 2
+                if event.key == pygame.K_ESCAPE:
+                    if GMap.menu:
+                        GMap.menu = False
+                    else:
+                        GMap.menu = True
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_a or event.key == pygame.K_d:
+                    PlayerX_c = 0
+                if event.key == pygame.K_s or event.key == pygame.K_w:
+                    PlayerY_c = 0
+                if event.key == pygame.K_LSHIFT:
+                    if PlayerY_c == 2 or PlayerY_c == -2:
+                        PlayerY_c = PlayerY_c / 2
+                    if PlayerX_c == 2 or PlayerX_c == -2:
+                        PlayerX_c = PlayerX_c / 2
+            if PlayerX_c == 0 and PlayerY_c == 0:
+                moving = False
+            else:
+                if not moving:
+                    moving = True
+                    index = 0
+
+        # draw the background
+        back(GMap.bX, GMap.bY)
+
+        # draw NPCs in front of the player
+        def monster_draw():
+            if not creature.moving and creature.proxi and creature.right:
+                creature.idle[0].draw(screen, index % creature.idle[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
+            elif creature.moving and creature.proxi and creature.right:
+                creature.walking[0].draw(screen, index % creature.walking[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
+            elif not creature.moving and creature.proxi and not creature.right:
+                creature.idle[1].draw(screen, index % creature.idle[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
+            elif creature.moving and creature.proxi and not creature.right:
+                creature.walking[1].draw(screen, index % creature.walking[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
+
+        for creature in npcs.NPCs:
+            if creature.thinker // 200 == 1:
+                creature.think()
+                creature.thinker = 0
+            if creature.Y < 540 and creature.kind == "Newt":
+                monster_draw()
+            elif creature.Y < 555 and creature.kind == "Fish":
+                monster_draw()
+            creature.thinker += 1
+
+        # draw Player
+        if right and not moving:
+            s.draw(screen, index % s.totalCellCount, HW, HH, CENTER_HANDLE)
+        elif not right and not moving:
+            s_l.draw(screen, index % s_l.totalCellCount, HW, HH, CENTER_HANDLE)
+        elif right and moving:
+            walking.draw(screen, index % walking.totalCellCount, HW, HH, CENTER_HANDLE)
         else:
-            if not moving:
-                moving = True
-                index = 0
+            walking_l.draw(screen, index % walking.totalCellCount, HW, HH, CENTER_HANDLE)
+        frameManager += 1
+        if frameManager // 10 != 0:
+            index += 1
+            frameManager = 0
 
-    # draw the background
-    back(GMap.bX, GMap.bY)
+        # draw NPCs behind the Player
+        for creature in npcs.NPCs:
+            if creature.Y >= 540 and creature.kind == "Newt":
+                monster_draw()
+            elif creature.Y >= 555 and creature.kind == "Fish":
+                monster_draw()
 
-    # draw NPCs in front of the player
-    def monster_draw():
-        if not creature.moving and creature.proxi and creature.right:
-            creature.idle[0].draw(screen, index % creature.idle[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
-        elif creature.moving and creature.proxi and creature.right:
-            creature.walking[0].draw(screen, index % creature.walking[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
-        elif not creature.moving and creature.proxi and not creature.right:
-            creature.idle[1].draw(screen, index % creature.idle[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
-        elif creature.moving and creature.proxi and not creature.right:
-            creature.walking[1].draw(screen, index % creature.walking[0].totalCellCount, creature.X, creature.Y, CENTER_HANDLE)
+        # Apply movement done that frame
+        GMap.bX += PlayerX_c
+        GMap.bY += PlayerY_c
+        for creature in npcs.NPCs:
+            creature.X += PlayerX_c + creature.mov_X
+            creature.Y += PlayerY_c + creature.mov_Y
+            if creature.X <= 0 or creature.X >= 1920 or creature.Y <= -50 or creature.Y >= 1080:
+                creature.proxi = False
+            else:
+                creature.proxi = True
 
-    for creature in npcs.NPCs:
-        if creature.thinker // 200 == 1:
-            creature.think()
-            creature.thinker = 0
-        if creature.Y < 540 and creature.kind == "Newt":
-            monster_draw()
-        elif creature.Y < 555 and creature.kind == "Fish":
-            monster_draw()
-        creature.thinker += 1
+        # writes "generating" on the screen while stuff is loading
+        if not GMap.generated:
+            screen.fill((0, 0, 0))
+            screen.blit(pygame.image.load("Pictures/generating.png"), (820, 550))
 
-    # draw Player
-    if right and not moving:
-        s.draw(screen, index % s.totalCellCount, HW, HH, CENTER_HANDLE)
-    elif not right and not moving:
-        s_l.draw(screen, index % s_l.totalCellCount, HW, HH, CENTER_HANDLE)
-    elif right and moving:
-        walking.draw(screen, index % walking.totalCellCount, HW, HH, CENTER_HANDLE)
-    else:
-        walking_l.draw(screen, index % walking.totalCellCount, HW, HH, CENTER_HANDLE)
-    frameManager += 1
-    if frameManager // 10 != 0:
-        index += 1
-        frameManager = 0
+        # if active, draw the menu
+        if GMap.menu:
+            screen.blit(menu, (681, 349))
 
-    # draw NPCs behind the Player
-    for creature in npcs.NPCs:
-        if creature.Y >= 540 and creature.kind == "Newt":
-            monster_draw()
-        elif creature.Y >= 555 and creature.kind == "Fish":
-            monster_draw()
+        # update display and set frame rate
+        pygame.display.update()
+        FPS.tick(60)
 
-    # Apply movement done that frame
-    GMap.bX += PlayerX_c
-    GMap.bY += PlayerY_c
-    for creature in npcs.NPCs:
-        creature.X += PlayerX_c + creature.mov_X
-        creature.Y += PlayerY_c + creature.mov_Y
-        if creature.X <= 0 or creature.X >= 1920 or creature.Y <= -50 or creature.Y >= 1080:
-            creature.proxi = False
-        else:
-            creature.proxi = True
-
-    if not GMap.generated:
-        screen.fill((0, 0, 0))
-        screen.blit(pygame.image.load("Pictures/generating.png"), (820, 550))
-
-    # update display and set frame rate
-    pygame.display.update()
-    FPS.tick(60)
+    # so that I don't get an error whenever I quit the game
+    # may bite my butt when the error doesn't come from that
+    except pygame.error:
+        break
