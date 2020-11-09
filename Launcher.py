@@ -215,6 +215,8 @@ selected = Player
 # tester.idle = [fish_idle, fish_idle_left]
 # npcs.NPCs.append(tester)
 
+# The menu
+menu = pygame.image.load("Pictures/border_smooth.png")
 
 def monster_draw():
     if not creature.moving and creature.proxi and creature.right:
